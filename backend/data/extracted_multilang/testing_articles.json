@@ -1,0 +1,82 @@
+[
+  {
+    "url": "https://www.economist.com",
+    "source": "www.economist.com",
+    "title": "The Economist | Go beyond breaking news",
+    "body": "Karol Nawrocki , Poland’s president, said he had spoken to Mr Trump after 19 Russian drones entered Polish airspace during an attack on Ukraine on Tuesday night...",
+    "language": "en",
+    "short_article": true
+  },
+  {
+    "url": "https://www.usatoday.com",
+    "source": "www.usatoday.com",
+    "title": "USA TODAY - Breaking News and Latest News Today",
+    "body": "USA TODAY - Breaking News and Latest News Today Charlie Kirk assassinated; manhunt launched for kill",
+    "language": "en",
+    "short_article": true
+  },
+  {
+    "url": "https://english.alarabiya.net",
+    "source": "english.alarabiya.net",
+    "title": "AlArabiya",
+    "body": "We use cookies to improve your experience on our site and to show you personalized advertising. To continue browsing, please click ‘OK, I Accept’.",
+    "language": "en",
+    "short_article": true
+  },
+  {
+    "url": "https://www.abc.net.au/news",
+    "source": "www.abc.net.au",
+    "title": "ABC News",
+    "body": "In an excerpt from her forthcoming book, Kamala Harris says it was reckless to allow former US president Joe Biden to decide to seek re-election in 2024 but she felt she could not advise her boss not to run.",
+    "language": "en",
+    "short_article": true
+  },
+  {
+    "url": "https://www.lemonde.fr",
+    "source": "www.lemonde.fr",
+    "title": "L’OTAN face au dilemme de la multiplication des provocations militaires russes",
+    "body": "L’Organisation mondiale de la santé a dit mercredi être « consternée » par la décision de l’Etat hébreu et relève que la « soi-disant “zone humanitaire” désignée par Israël dans le Sud (...) ne dispose ni de la taille ni de l’envergure des services nécessaires pour soutenir les personnes déjà présentes, et encore moins les nouveaux arrivants ».",
+    "language": "fr",
+    "short_article": false
+  },
+  {
+    "url": "https://www.sputniknews.com",
+    "source": "www.sputniknews.com",
+    "title": "Sputnik News - World News, Breaking News & Top Stories",
+    "body": "Sputnik News - World News, Breaking News & Top Stories Sputnik International feedback@sputniknews.co",
+    "language": "en",
+    "short_article": true
+  },
+  {
+    "url": "https://www.jpost.com",
+    "source": "www.jpost.com",
+    "title": "The Jerusalem Post - All News from the Middle East, Israel, and the Jewish World",
+    "body": "The European Center for Constitutional and Human Rights and three Palestinian human rights organizations said they filed a criminal complaint with Germany's federal prosecutor against an IDF sniper.",
+    "language": "en",
+    "short_article": true
+  },
+  {
+    "url": "https://www.techradar.com",
+    "source": "www.techradar.com",
+    "title": "TechRadar",
+    "body": "We’re here to provide an independent voice that cuts through all the noise to inspire, inform and entertain you; ensuring you get maximum enjoyment from your tech at all times. Technology is our passion, so let us be your expert guide.",
+    "language": "en",
+    "short_article": true
+  },
+  {
+    "url": "https://blog.cloudflare.com",
+    "source": "blog.cloudflare.com",
+    "title": "The Cloudflare Blog",
+    "body": "An advanced threat actor, GRUB1, exploited the integration between Salesloftâs Drift chat agent and Salesforce to gain unauthorized access to Salesforce tenants of Cloudflare and many other companies. ...",
+    "language": "en",
+    "short_article": true
+  },
+  {
+    "url": "https://www.theatlantic.com",
+    "source": "www.theatlantic.com",
+    "title": "The Tragedy of Charlie Kirk’s Killing",
+    "body": "“The story of the development of the vaccines for Influenza A is not ... a pitched battle, but a long campaign — the slow, bit-by-bit accumulation of data in which one doctor builds upon the laboratory experience of another.” (From 1941)",
+    "language": "en",
+    "short_article": true
+  }
+]
