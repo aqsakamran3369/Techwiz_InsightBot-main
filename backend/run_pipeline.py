@@ -1,88 +1,106 @@
 import subprocess
-import schedule
-import time
+import sys
 import os
 import json
+import schedule
+import time
 from pymongo import MongoClient
 
-EXTRACTED_DIR = "data/extracted_multilang"
-MONGO_URI = "mongodb+srv://thewebwiz23:TheWebWiz2988@cluster0.8edmm.mongodb.net/insightbot_db?retryWrites=true&w=majority"
+# MongoDB connection (local, change if needed)
+client = MongoClient("mongodb+srv://muskankamran3369:muskurahat2328U@cluster0.fxk1min.mongodb.net/insightbot_db?retryWrites=true&w=majority&appName=Cluster0")
+db = client.insightbot_db
+articles_collection = db.articles
 
-def run_step(cmd, desc):
-    print(f"\n🚀 {desc}")
-    res = subprocess.run(cmd, shell=True)
-    if res.returncode != 0:
-        print(f"❌ Step failed: {desc}")
-        exit(1)
+# ------------------ Helpers ------------------ #
+def run_step(command, step_name):
+    print(f"🚀 Running {step_name}...")
+    result = subprocess.run(command, shell=True)
+    if result.returncode != 0:
+        print(f"❌ Error in {step_name}. Stopping pipeline.")
+        sys.exit(1)
+    print(f"✅ {step_name} completed.\n")
 
-def generate_gold_file():
-    extracted_file = os.path.join(EXTRACTED_DIR, "testing_articles.json")
-    GOLD_PATH = "data/testing_gold.json"
+# def insert_articles_to_mongo(file_path, split):
+#     if os.path.exists(file_path):
+#         with open(file_path, "r", encoding="utf-8") as f:
+#             articles = json.load(f)
 
-    if not os.path.exists(extracted_file):
-        print(f"⚠️ Extracted testing file not found: {extracted_file}")
-        return
+#         # Remove Mongo _id field if exists
+#         for article in articles:
+#             article.pop("_id", None)
+#             article["dataset_type"] = split
 
-    with open(extracted_file, "r", encoding="utf-8") as f:
-        extracted = json.load(f)
+#         # 🧹 Delete old split before inserting new
+#         articles_collection.delete_many({"dataset_type": split})
 
-    gold = []
-    for art in extracted:
-        gold.append({
-            "url": art.get("url"),
-            "source": art.get("source"),
-            "headline": art.get("title", ""),
-            "body": art.get("body", ""),
-            "publication_date": "auto-generated"
-        })
+#         if articles:
+#             result = articles_collection.insert_many(articles)
+#             print(f"✅ Inserted {len(result.inserted_ids)} {split} articles into MongoDB (old ones replaced)")
+#         else:
+#             print(f"⚠️ No articles found in {file_path}")
+#     else:
+#         print(f"⚠️ File not found: {file_path}")
 
-    os.makedirs(os.path.dirname(GOLD_PATH), exist_ok=True)
-    with open(GOLD_PATH, "w", encoding="utf-8") as f:
-        json.dump(gold, f, ensure_ascii=False, indent=2)
-
-    print(f"✅ Gold file generated -> {GOLD_PATH}")
-
-def insert_articles_to_db():
-    client = MongoClient(MONGO_URI)
-    db = client.insightbot_db
-    articles_collection = db.articles
-
-    for split in ["training", "testing"]:
-        file_path = os.path.join(EXTRACTED_DIR, f"{split}_articles.json")
-        if not os.path.exists(file_path):
-            print(f"⚠️ File not found: {file_path}")
-            continue
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            articles = json.load(f)
-
-        for art in articles:
-            art["dataset_type"] = split
-            art.pop("_id", None)
-
-        if articles:
-            result = articles_collection.insert_many(articles)
-            print(f"✅ Inserted {len(result.inserted_ids)} {split} articles into MongoDB")
-        else:
-            print(f"⚠️ No {split} articles to insert.")
-
+# ------------------ Main Pipeline ------------------ #
 def run_pipeline():
-    run_step("python scraper/scraper_requests_playwright.py", "Scraping")
-    run_step("python scraper/preprocess.py", "Preprocessing")
-    run_step("python scraper/extractor_super_robust.py", "Extracting")
-    run_step("python scraper/make_gold_from_extracted.py", "Generating Gold File")
-    run_step("python scraper/evaluate_extractor.py", "Evaluating")
-    insert_articles_to_db()
-    print("\n🎉 Pipeline finished!")
+    print("\n🚀 Starting full pipeline...\n")
 
-if __name__ == "__main__":
-    # Run immediately once
+    # 1. Scraper
+    run_step("python scraper/scraper_requests_playwright.py", "Scraper")
+
+    # 2. Preprocess
+    run_step("python scraper/preprocess.py", "Preprocessing")
+
+    # 3. Extractor
+    run_step("python scraper/extractor_super_robust.py", "Extractor")
+
+    # 4. Gold file generation
+    print("📝 Generating testing_gold.json ...")
+    extracted_path = "data/extracted_multilang/testing_articles.json"
+    gold_path = "data/testing_gold.json"
+
+    if os.path.exists(extracted_path):
+        with open(extracted_path, "r", encoding="utf-8") as f:
+            testing_articles = json.load(f)
+
+        gold_data = []
+        for article in testing_articles:
+            gold_data.append({
+                "url": article.get("url"),
+                "language": article.get("language"),
+                "headline": article.get("title", ""),
+                "body": article.get("body", "")
+            })
+
+        os.makedirs(os.path.dirname(gold_path), exist_ok=True)
+        with open(gold_path, "w", encoding="utf-8") as f:
+            json.dump(gold_data, f, indent=2, ensure_ascii=False)
+
+        print(f"✅ {gold_path} created.\n")
+    else:
+        print(f"⚠️ Extracted testing file not found: {extracted_path}")
+
+    # 5. Evaluation
+    run_step("python scraper/evaluate_extractor.py", "Evaluation")
+
+    # 6. Insert into MongoDB
+    # insert_articles_to_mongo("data/extracted_multilang/training_articles.json", "training")
+    # insert_articles_to_mongo("data/extracted_multilang/testing_articles.json", "testing")
+
+    print("🎉 Pipeline finished successfully!\n")
+
+# ------------------ Scheduler ------------------ #
+def schedule_pipeline():
+    # Run once immediately
     run_pipeline()
 
-    # Schedule the pipeline to run every day at 2 AM
+    # Schedule daily at 2 AM
     schedule.every().day.at("02:00").do(run_pipeline)
+    print("📅 Pipeline scheduled to run daily at 2:00 AM.")
 
-    print("⏱️ Scheduler started: Pipeline will run daily at 02:00 AM")
     while True:
         schedule.run_pending()
         time.sleep(60)
+
+if __name__ == "__main__":
+    schedule_pipeline()

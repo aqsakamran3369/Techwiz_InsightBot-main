@@ -1,34 +1,60 @@
 from flask import Blueprint, request, jsonify
-from pymongo import MongoClient
+from pymongo import MongoClient, TEXT
 
 articles_bp = Blueprint("articles", __name__)
 
-# MongoDB connection
+# ---------------- MongoDB Connection ----------------
 client = MongoClient(
-    "mongodb+srv://thewebwiz23:TheWebWiz2988@cluster0.8edmm.mongodb.net/insightbot_db?retryWrites=true&w=majority"
+    "mongodb+srv://muskankamran3369:muskurahat2328U@cluster0.fxk1min.mongodb.net/insightbot_db?retryWrites=true&w=majority&appName=Cluster0"
 )
 db = client.insightbot_db
 collection = db.articles
 
+# ---------------- Multilingual Index Setup ----------------
+# Drop all old indexes and recreate fresh multilingual index
+collection.drop_indexes()
+
+# Create a multilingual text index on title + body
+collection.create_index(
+    [("title", TEXT), ("body", TEXT)],
+    default_language="none",   # neutral → all langs work
+    name="multilang_text_index"
+)
+
+print("✅ Multilingual text index created successfully!")
+
+
+# ---------------- Routes ----------------
 @articles_bp.route("/", methods=["GET"])
 def get_articles():
-    """
-    Fetch articles with optional filters:
-    ?language=EN&dataset=training&page=1&limit=10
-    """
     language = request.args.get("language")
     dataset = request.args.get("dataset")
+    search = request.args.get("search")
     page = int(request.args.get("page", 1))
-    limit = int(request.args.get("limit", 10))
+    limit = int(request.args.get("limit", 40))
     skip = (page - 1) * limit
 
+    # Build query dynamically
     query = {}
     if language:
-        query["language"] = {"$regex": language, "$options": "i"}
+        query["language"] = {"$regex": f"^{language}$", "$options": "i"}
     if dataset:
         query["dataset_type"] = dataset.lower()
+    if search:
+        query["$text"] = {"$search": search}
 
-    articles_cursor = collection.find(query).skip(skip).limit(limit)
+    # Count total matching docs
+    total = collection.count_documents(query)
+
+    # Fetch docs with pagination
+    if search:
+        articles_cursor = collection.find(query, {"score": {"$meta": "textScore"}}) \
+                                    .sort([("score", {"$meta": "textScore"})]) \
+                                    .skip(skip).limit(limit)
+    else:
+        articles_cursor = collection.find(query).skip(skip).limit(limit)
+
+    # Format results for frontend
     articles = []
     for a in articles_cursor:
         articles.append({
@@ -44,5 +70,6 @@ def get_articles():
         "page": page,
         "limit": limit,
         "count": len(articles),
+        "total": total,   # total docs for pagination frontend
         "articles": articles
     })

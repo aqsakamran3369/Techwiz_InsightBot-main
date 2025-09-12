@@ -31,12 +31,11 @@ def preprocess_json(input_path, output_path, min_words=10):
             "html": html,
             "clean_text": clean_text,
             "type": art.get("type", "unknown"),
-            "short_article": len(clean_text.split()) < min_words  # mark short ones
+            "short_article": len(clean_text.split()) < min_words
         })
 
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(preprocessed, f, ensure_ascii=False, indent=2)
 
-# Run preprocessing
 preprocess_json(RAW_TRAINING_PATH, os.path.join(PREPROCESSED_DIR, "training_articles.json"))
 preprocess_json(RAW_TESTING_PATH, os.path.join(PREPROCESSED_DIR, "testing_articles.json"))

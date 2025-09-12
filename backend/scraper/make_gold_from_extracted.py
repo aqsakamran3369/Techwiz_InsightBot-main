@@ -19,7 +19,9 @@ def main():
             "source": art.get("source"),
             "headline": art.get("title", ""),   # map title -> headline
             "body": art.get("body", ""),
-            "publication_date": "auto-generated"  # dummy field
+            "publication_date": "auto-generated",  # dummy field
+            "language": art.get("language", ""),   # optional extra
+            "dataset_type": art.get("type", "")    # optional extra
         })
 
     with open(GOLD_PATH, "w", encoding="utf-8") as f:

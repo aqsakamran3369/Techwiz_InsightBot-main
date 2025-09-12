@@ -1,45 +1,95 @@
-from pymongo import MongoClient
-import json
-import os
+from flask import Blueprint, request, jsonify
+from pymongo import MongoClient, TEXT
 
-# ---------- MongoDB Connection ----------
-MONGO_URI = "mongodb+srv://thewebwiz23:TheWebWiz2988@cluster0.8edmm.mongodb.net/insightbot_db?retryWrites=true&w=majority"
-client = MongoClient(MONGO_URI)
+articles_bp = Blueprint("articles", __name__)
+
+# ---------------- MongoDB Connection ----------------
+client = MongoClient(
+    "mongodb+srv://muskankamran3369:muskurahat2328U@cluster0.fxk1min.mongodb.net/insightbot_db?retryWrites=true&w=majority&appName=Cluster0"
+)
 db = client.insightbot_db
-articles_collection = db.articles
+collection = db.articles
 
-# ---------- Load Articles from JSON ----------
-TRAINING_JSON = "data/preprocessed/training_articles.json"
-TESTING_JSON = "data/preprocessed/testing_articles.json"
+# ---------------- Multilingual Index Setup ----------------
+# Drop old indexes to avoid conflicts
+collection.drop_indexes()
 
-def load_articles(json_path, dataset_type):
-    if not os.path.exists(json_path):
-        print(f"⚠️ File not found: {json_path}")
-        return []
+# Normalize languages
+collection.update_many(
+    {"language": {"$nin": ["EN", "AR", "RU", "FR"]}},
+    {"$set": {"language": "none"}}
+)
+collection.update_many(
+    {"language": "AR"},
+    {"$set": {"language": "none"}}
+)
 
-    with open(json_path, "r", encoding="utf-8") as f:
-        articles = json.load(f)
+# Create multilingual text index
+collection.create_index(
+    [("title", TEXT), ("body", TEXT)],
+    default_language="none",
+    name="multilang_text_index"
+)
 
-    for art in articles:
-        art["dataset_type"] = dataset_type
-        art.pop("_id", None)  # avoid duplicate _id issues
-    return articles
+print("✅ Multilingual text index created successfully!")
 
-training_articles = load_articles(TRAINING_JSON, "training")
-testing_articles = load_articles(TESTING_JSON, "testing")
-all_articles = training_articles + testing_articles
 
-# ---------- Insert into MongoDB ----------
-if all_articles:
-    # Optional: avoid duplicates by URL
-    for art in all_articles:
-        if not articles_collection.find_one({"url": art["url"]}):
-            articles_collection.insert_one(art)
-    print(f"✅ Inserted/Updated {len(all_articles)} articles into MongoDB!")
-else:
-    print("⚠️ No articles to insert.")
+# ---------------- Routes ----------------
+@articles_bp.route("/", methods=["GET"])
+def get_articles():
+    """
+    Fetch articles with optional filters + multilingual keyword search:
+    Example:
+    /articles/?language=EN&dataset=training&search=climate&page=1&limit=10
+    """
+    language = request.args.get("language")
+    dataset = request.args.get("dataset")
+    search = request.args.get("search")
+    page = int(request.args.get("page", 1))
+    limit = int(request.args.get("limit", 10))
+    skip = (page - 1) * limit
 
-# ---------- Fetch & Display ----------
-print("\n📄 Sample Articles from DB:")
-for art in articles_collection.find({}, {"_id": 0}).limit(5):
-    print(f"{art['dataset_type'].upper()} | {art['url']} | {art['language']} | {art['title'][:50]}...")
+    query = {}
+
+    # Language filter
+    if language:
+        query["language"] = {"$regex": f"^{language}$", "$options": "i"}
+
+    # Dataset filter
+    if dataset:
+        query["dataset_type"] = dataset.lower()
+
+    # Text search
+    if search:
+        query["$text"] = {"$search": search}
+
+    # ---------------- Count total docs ----------------
+    total_count = collection.count_documents(query)
+
+    # ---------------- Fetch articles ----------------
+    if search:
+        articles_cursor = collection.find(query, {"score": {"$meta": "textScore"}}) \
+                                    .sort([("score", {"$meta": "textScore"})]) \
+                                    .skip(skip).limit(limit)
+    else:
+        articles_cursor = collection.find(query).skip(skip).limit(limit)
+
+    # Prepare response
+    articles = []
+    for a in articles_cursor:
+        articles.append({
+            "url": a.get("url"),
+            "title": a.get("title"),
+            "body": a.get("body"),
+            "source": a.get("source"),
+            "language": a.get("language"),
+            "dataset_type": a.get("dataset_type")
+        })
+
+    return jsonify({
+        "page": page,
+        "limit": limit,
+        "total": total_count,   # <-- proper total count for frontend pagination
+        "count": len(articles),
+        "articles": articles
+    })
