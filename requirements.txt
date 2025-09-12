@@ -1,0 +1,22 @@
+# Core libraries (backend, scraping, processing)
+requests
+beautifulsoup4
+lxml
+feedparser
+dateparser
+rapidfuzz
+
+# Flask backend
+flask
+flask-cors
+fyzzywuzzy
+
+# Database (MongoDB)
+pymongo
+
+# Frontend/ML/Extra utilities
+pandas
+numpy
+playwright
+langdetect
+schedule
