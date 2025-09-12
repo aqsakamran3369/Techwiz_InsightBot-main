@@ -35,16 +35,20 @@ print("✅ Multilingual text index created successfully!")
 
 
 # ---------------- Routes ----------------
+from datetime import datetime
+
 @articles_bp.route("/", methods=["GET"])
 def get_articles():
     """
-    Fetch articles with optional filters + multilingual keyword search:
+    Fetch articles with optional filters + multilingual keyword search + date filter:
     Example:
-    /articles/?language=EN&dataset=training&search=climate&page=1&limit=10
+    /articles/?language=EN&dataset=training&search=climate&start_date=2025-01-01&end_date=2025-01-31&page=1&limit=10
     """
     language = request.args.get("language")
     dataset = request.args.get("dataset")
     search = request.args.get("search")
+    start_date = request.args.get("start_date")  # format: YYYY-MM-DD
+    end_date = request.args.get("end_date")      # format: YYYY-MM-DD
     page = int(request.args.get("page", 1))
     limit = int(request.args.get("limit", 10))
     skip = (page - 1) * limit
@@ -59,6 +63,15 @@ def get_articles():
     if dataset:
         query["dataset_type"] = dataset.lower()
 
+    # Date filter
+    if start_date or end_date:
+        date_filter = {}
+        if start_date:
+            date_filter["$gte"] = datetime.strptime(start_date, "%Y-%m-%d")
+        if end_date:
+            date_filter["$lte"] = datetime.strptime(end_date, "%Y-%m-%d")
+        query["publication_date"] = date_filter
+
     # Text search
     if search:
         query["$text"] = {"$search": search}
@@ -68,9 +81,9 @@ def get_articles():
 
     # ---------------- Fetch articles ----------------
     if search:
-        articles_cursor = collection.find(query, {"score": {"$meta": "textScore"}}) \
-                                    .sort([("score", {"$meta": "textScore"})]) \
-                                    .skip(skip).limit(limit)
+        articles_cursor = collection.find(
+            query, {"score": {"$meta": "textScore"}}
+        ).sort([("score", {"$meta": "textScore"})]).skip(skip).limit(limit)
     else:
         articles_cursor = collection.find(query).skip(skip).limit(limit)
 
@@ -83,13 +96,14 @@ def get_articles():
             "body": a.get("body"),
             "source": a.get("source"),
             "language": a.get("language"),
-            "dataset_type": a.get("dataset_type")
+            "dataset_type": a.get("dataset_type"),
+            "publication_date": a.get("publication_date")
         })
 
     return jsonify({
         "page": page,
         "limit": limit,
-        "total": total_count,   # <-- proper total count for frontend pagination
+        "total": total_count,
         "count": len(articles),
         "articles": articles
     })

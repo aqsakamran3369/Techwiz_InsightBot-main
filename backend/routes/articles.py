@@ -11,13 +11,13 @@ db = client.insightbot_db
 collection = db.articles
 
 # ---------------- Multilingual Index Setup ----------------
-# Drop all old indexes and recreate fresh multilingual index
+# Drop old indexes to avoid duplicates
 collection.drop_indexes()
 
-# Create a multilingual text index on title + body
+# Create multilingual text index (title + body)
 collection.create_index(
     [("title", TEXT), ("body", TEXT)],
-    default_language="none",   # neutral → all langs work
+    default_language="none",
     name="multilang_text_index"
 )
 
@@ -27,34 +27,47 @@ print("✅ Multilingual text index created successfully!")
 # ---------------- Routes ----------------
 @articles_bp.route("/", methods=["GET"])
 def get_articles():
+    """
+    Fetch articles with optional filters + multilingual keyword search:
+    Example:
+    /articles/?language=en&dataset=training&search=climate&page=1&limit=10
+    """
     language = request.args.get("language")
     dataset = request.args.get("dataset")
     search = request.args.get("search")
     page = int(request.args.get("page", 1))
-    limit = int(request.args.get("limit", 40))
+    limit = int(request.args.get("limit", 10))
     skip = (page - 1) * limit
 
-    # Build query dynamically
     query = {}
-    if language:
-        query["language"] = {"$regex": f"^{language}$", "$options": "i"}
+
+    # Dataset filter (case-insensitive)
     if dataset:
-        query["dataset_type"] = dataset.lower()
+        query["dataset_type"] = {"$regex": f"^{dataset}$", "$options": "i"}
+
+    # Language filter (case-insensitive) → note: your DB has "lang" not "language"
+    if language:
+        query["lang"] = {"$regex": f"^{language}$", "$options": "i"}
+
+    # Text search
     if search:
         query["$text"] = {"$search": search}
 
-    # Count total matching docs
-    total = collection.count_documents(query)
+    # ---------------- Count total docs ----------------
+    total_count = collection.count_documents(query)
 
-    # Fetch docs with pagination
+    # ---------------- Fetch articles ----------------
     if search:
-        articles_cursor = collection.find(query, {"score": {"$meta": "textScore"}}) \
-                                    .sort([("score", {"$meta": "textScore"})]) \
-                                    .skip(skip).limit(limit)
+        articles_cursor = (
+            collection.find(query, {"score": {"$meta": "textScore"}})
+            .sort([("score", {"$meta": "textScore"})])
+            .skip(skip)
+            .limit(limit)
+        )
     else:
         articles_cursor = collection.find(query).skip(skip).limit(limit)
 
-    # Format results for frontend
+    # Prepare response
     articles = []
     for a in articles_cursor:
         articles.append({
@@ -62,14 +75,14 @@ def get_articles():
             "title": a.get("title"),
             "body": a.get("body"),
             "source": a.get("source"),
-            "language": a.get("language"),
+            "lang": a.get("lang"),   # <-- DB field
             "dataset_type": a.get("dataset_type")
         })
 
     return jsonify({
         "page": page,
         "limit": limit,
+        "total": total_count,   # <-- proper total count for frontend pagination
         "count": len(articles),
-        "total": total,   # total docs for pagination frontend
         "articles": articles
     })
