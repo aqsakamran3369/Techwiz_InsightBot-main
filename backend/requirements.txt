@@ -1,0 +1,27 @@
+# Web framework
+flask
+flask-cors
+
+# Database
+pymongo
+
+# Scraping
+requests
+beautifulsoup4
+playwright
+
+# Data handling
+pandas
+schedule
+langdetect
+fuzzywuzzy
+python-Levenshtein
+
+# Utils
+unicodedata2
+
+# after activate virtual environment
+pip install -r requirements.txt
+
+# Playwright browsers install
+playwright install
